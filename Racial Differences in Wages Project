@@ -1,0 +1,291 @@
+#Part I - Introduction
+#Define variables
+wage=salary[,1]
+edu=salary[,2]
+exp=salary[,3]
+city=salary[,4]
+reg=salary[,5]
+race=salary[,6]
+deg=salary[,7]
+com=salary[,8]
+emp=salary[,9]
+#The first plot in the Introduction, a boxplot of wages by racial group
+boxplot(log(salary$wage)~salary$race,main="Log of Wages and Race",ylab="Log of Wages",xlab="Racial Group")
+#Some basic summary statistics of wages by racial group 
+black_wage<-salary$wage[race=="black"]
+white_wage<-salary$wage[race=="white"]
+other_wage<-salary$wage[race=="other"]
+summary(black_wage)
+summary(white_wage)
+summary(other_wage)
+#Produce two pie charts- one with the breakdown of the sample by race 
+#The other with the breakdown of people who have more than sixteen years of education by race 
+#Sample by Race
+slices=c(18305,4584,1934)
+lbls<-c("White","Other","Black")
+pct<-round(slices/sum(slices)*100)
+lbls<-paste(lbls,pct)
+lbls<-paste(lbls,"%",sep="")
+pie(slices,labels=lbls,col=c("red","green","blue"),main="Breakdown of the Sample by Race")
+#People with more than sixteen years of education by race
+black_16<-salary$edu[race=="black" & edu>=16]
+white_16<-salary$edu[race=="white" & edu>=16]
+other_16<-salary$edu[race=="other" & edu>=16]
+slices=c(4756,1229,287)
+lbls<-c("White","Other","Black")
+pct<-round(slices/sum(slices)*100)
+lbls<-paste(lbls,pct)
+lbls<-paste(lbls,"%",sep="")
+pie(slices,labels=lbls,col=c("red","green","blue"), main="People with More than Sixteen Years of Education, by Race")
+#Boxplot of job experience, by racial group 
+boxplot(exp~race,main="Job Experience by Race",xlab="Racial Group",ylab="Experience")
+#Part II - Final Statistical Model 
+e <- residuals(model_9)
+s.hat<-predict(lm(abs(e)~edu),new.data=salary$edu)
+model_9_weighted<-lm(log(wage)~edu+(edu*exp)+(edu*city)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+race+deg+emp,weights=1/(s.hat*s.hat))
+summary(model_9_weighted)
+AIC(model_9_weighted)
+#More on this in Part IV 
+#Part III - Testing the Research Questions
+#Question 1- Wages of African American Men compared to those of white men
+#Since R drops one of the race variables due to perfect multicollinearity, the coefficients of "white"
+#and "other" represent the difference between wages of black men and white men/men of other races.
+#Therefore to test this question, we must look at the significance of the coefficient "white" and 
+#R gives this to us in the summmary
+#Question 2- Wages of African America Men compared to the rest of the population 
+#If wages of all men were identical, the coefficients of the two race variables would both be zero.
+#Therefore, we can use an F test to determine the answer to this question. 
+model_9_reduced <- lm(log(wage)~edu+(edu*exp)+(edu*city)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+deg+emp)
+anova(model_9)
+anova(model_9_reduced)
+f9=((6578.2-6477.1)/2)/(6477.1/24799)
+#Part IV - Appendix 
+#Transformation of the Depedent Variable
+#QQ Plots of a sample 
+#QQ Plot for the very basic model 
+base_model<-lm(wage~edu+exp+city+reg+race+deg+com+emp)
+summary(base_model)
+qqnorm(rstudent(base_model))
+#Box Cox Procedure on another basic model to get a transformation of wages
+install.packages("MASS")
+library(MASS)
+bc=boxcox(wage~race)
+lambda<-bc$race[which.max(bc$wage)]
+#QQ Plot for the transformed variable -- log(wages)
+one_var_model<-lm(log(wage)~race)
+summary(one_var_model)
+qqnorm(rstudent(one_var_model))
+#Plots of continuous variables (Education, Experience, Commuting Distance, and No. of Employees)
+#Help give an idea of the functional form for each variable (polynomial, log, etc.)
+plot(edu,log(wage), xlab="Education",ylab="Log(Wages)")
+lines(supsmu(edu,log(wage)),col="purple")
+plot(exp,log(wage),xlab="Experience",ylab="Log(Wages)")
+lines(supsmu(exp,log(wage)),col="purple")
+plot(com,log(wage),xlab="Commuting Distance",ylab="Log(Wages)")
+lines(supsmu(com,log(wage)),col="purple")
+plot(emp,log(wage),xlab="Employees",ylab="Log(Wages)")
+lines(supsmu(emp,log(wage)),col="purple")
+qqline(rstudent(one_var_model))
+qqline(rstudent(base_model))
+#Commuting Distance was nearly a straight line- an early indication that it should be dropped
+#No. of Employees appeared to have a linear fit
+#Education potentially had a polynomial fit since the benefits of education were more realized at higher levels of education.
+#Experience certainly required a polynomial fit, with a concave down smoother
+#Plots of the variables against wages with lines for each race overlaid
+#This is meant to give an idea about interactions with race.
+#Race and Education
+black <- salary$race=="black"
+white <- salary$race=="white"
+other <- salary$race=="other"
+plot(edu,log(wage),col="lightgrey",xlab="Education",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$edu[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$edu[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$edu[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#Race and Experience
+plot(edu,log(wage),col="lightgrey",xlab="Experience",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$exp[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$exp[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$exp[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#Race and Commuting Distance
+plot(edu,log(wage),col="lightgrey",xlab="Commuting Distance",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$com[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$com[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$com[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#Race and Employees
+plot(edu,log(wage),col="lightgrey",xlab="Employees",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$emp[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$emp[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$emp[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#Race and City
+plot(city,log(wage),col="lightgrey",xlab="City Indicator",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$city[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$city[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$city[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#Race and Region
+plot(reg,log(wage),col="lightgrey",xlab="Region",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$reg[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$reg[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$reg[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#Race and Degree
+plot(deg,log(wage),col="lightgrey",xlab="Degree Indicator",ylab="Log(Wages)")
+abline(lm(log(salary$wage)[black]~salary$deg[black]),col="blue")
+abline(lm(log(salary$wage)[white]~salary$deg[white]),col="red")
+abline(lm(log(salary$wage)[other]~salary$deg[other]),col="green")
+legend("topleft",legend=c("Black","White","Other"),col=c("blue","green","red"),lty=c(1,1,1))
+#The slopes of the lines do not appear to be too different in any of the plots so interactions with race
+#will not be included.
+#Other Interactions 
+#City and Education
+interaction.plot(city,edu,log(wage))
+#City and Experience 
+interaction.plot(city,exp,log(wage))
+#City and Region
+interaction.plot(city,reg,log(wage))
+#City and Degree
+interaction.plot(city,deg,log(wage))
+#City and Commuting Distance
+interaction.plot(city,com,log(wage))
+#City and Employees 
+interaction.plot(city,emp,log(wage))
+#City and Degree
+interaction.plot(city,deg,log(wage))
+#Degree and Education
+interaction.plot(deg,edu,log(wage))
+#Degree and Experience
+interaction.plot(deg,exp,log(wage))
+#Degree and Region
+interaction.plot(deg,reg,log(wage))
+#Degree and Employees
+interaction.plot(deg,emp,log(wage))
+#Degree and Commuting Distance
+interaction.plot(deg,com,log(wage))
+#Region and Education
+interaction.plot(reg,edu,log(wage))
+#Region and Experience
+interaction.plot(reg,exp,log(wage))
+#Region and Employees 
+interaction.plot(reg,emp,log(wage))
+#Region and Commuting Distance 
+interaction.plot(reg,com,log(wage))
+#These plots gave an idea about categorical/continuous and categorical/categorical interactions.
+#For continuous/continuous interactions, summary statstics of sample models were examined, as indicated in A5
+#Model Selection
+#Model 1
+model_1<-lm(log(wage)~edu+exp+city+reg+race+deg+com+emp)
+summary(model_1)
+AIC(model_1)
+#Model 2
+model_2<-lm(log(wage)~edu+exp+city+reg+race+deg+emp)
+summary(model_2)
+AIC(model_2)
+#Model 3
+model_3<-lm(log(wage)~edu+poly(exp,2)+city+reg+race+deg+emp)
+summary(model_3)
+AIC(model_3)
+#Model 4 
+model_4<-lm(log(wage)~edu+poly(edu,2)+exp+city+reg+race+deg+emp)
+summary(model_4)
+AIC(model_4)
+#Model 5
+model_5<-lm(log(wage)~poly(edu,2)+poly(exp,2)+city+reg+race+deg+emp)
+summary(model_5)
+AIC(model_5)
+#Model 6 
+model_6<-lm(log(wage)~poly(edu,2)+(edu*exp)+(edu*city)+(edu*reg)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+(reg*deg)+race+deg+emp)
+summary(model_6)
+AIC(model_6)
+#Model 7
+model_7<-lm(log(wage)~poly(edu,2)+(edu*exp)+(edu*city)+(edu*reg)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+race+deg+emp)
+summary(model_7)
+AIC(model_7)
+#Model 8 
+model_8<-lm(log(wage)~edu+(edu*exp)+(edu*city)+(edu*reg)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+race+deg+emp)
+summary(model_8)
+AIC(model_8)
+#Model 9
+model_9<-lm(log(wage)~edu+(edu*exp)+(edu*city)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+race+deg+emp)
+summary(model_9)
+AIC(model_9)
+#Model 9- Weighted
+e <- residuals(model_9)
+s.hat<-predict(lm(abs(e)~edu),new.data=salary$edu)
+model_9_weighted<-lm(log(wage)~edu+(edu*exp)+(edu*city)+(edu*deg)+poly(exp,2)+(exp*reg)+(exp*deg)+city+(city*reg)+(city*deg)+reg+race+deg+emp,weights=1/(s.hat*s.hat))
+summary(model_9_weighted)
+AIC(model_9_weighted)
+#Model 9- Weighted (called Model 10 in the final report) ended up being the final one.
+#Diagnostic Plots (I did not end up using all of these)
+#QQ Plot of the Studentized Deleted Residuals 
+qqnorm(rstudent(model_9_weighted),main="QQ Plot")
+abline(a=0,b=1,lty=3)
+
+#Temporal Dependence
+plot(1:n,rstudent(model_9_weighted),main="Line Plot",ylab="Deleted Residuals",xlab="")
+abline(h=0,lty=3)
+lines(1:n,rstudent(model_9_weighted),col=2)
+
+#Studentized Deleted Residuals and Predicted Values
+plot(predict(model_9_weighted),rstudent(model_9_weighted),main="Residual Plot",xlab="Y-hat",ylab="Deleted Residuals")
+abline(h=0,lty=2)
+lines(supsmu(predict(model_9_weighted),rstudent(model_9_weighted)),col=2)
+
+#Studentized Deleted Residuals and a Covariate 
+plot(edu,rstudent(model_9_weighted),main="Residual Plot",xlab="x",ylab="Deleted Residuals")
+abline(h=0,lty=2)
+lines(supsmu(edu,rstudent(model_9_weighted)),col=2)
+
+#Squared studentized deleted residuals verses the predected values
+plot(predict(model_9_weighted),(rstudent(model_9_weighted))^2,main="Residual Plot",xlab="Y-hat",ylab="Squared Deleted Residuals")
+abline(h=0,lty=2)
+lines(supsmu(predict(model_9_weighted),(rstudent(model_9_weighted))^2),col=2)
+#checking for high correlations
+white_bin<-as.numeric(salary$race=="white")
+black_bin<-as.numeric(salary$race=="black")
+other_bin<-as.numeric(salary$race=="other")
+city_bin<-as.numeric(salary$city=="yes")
+deg_bin<-as.numeric(salary$deg=="yes")
+northeast_bin<-as.numeric(salary$reg=="northeast")
+south_bin<-as.numeric(salary$reg=="south")
+west_bin<-as.numeric(salary$reg=="west")
+df<-cbind.data.frame(edu,edu*exp,edu*city_bin,edu*deg_bin,exp,exp^2,exp*northeast_bin,exp*south_bin,exp*west_bin,city_bin,city_bin*northeast_bin,city_bin*south_bin,city_bin*west_bin,city_bin*deg_bin,northeast_bin,south_bin,west_bin,white_bin,black_bin,other_bin,deg_bin,emp)
+cor(df)
+#MSPR
+set.seed(0)
+round(.2*nrow(salary))
+index <- sample(1:nrow(df),4965,replace = F)
+train.data <- salary[-index,]
+data <- train.data
+test.data <- salary[index,]
+train_edu=train.data$edu
+train_exp=train.data$exp
+train_city=train.data$city
+train_reg=train.data$reg
+train_race=train.data$race
+train_deg=train.data$deg
+train_emp=train.data$emp
+model_9_train<-lm(log(train.data$wage)~train_edu+(train_edu*train_exp)+(train_edu*train_deg)+poly(train_exp,2)+(train_exp*train_reg)+(train_exp*train_deg)+train_city+(train_city*train_reg)+(train_city*train_deg)+train_reg+train_race+train_deg+train_emp)
+MSE<-mean(residuals(model_9_train)^2)
+y.test<-test.data[,1]
+x.test<-test.data[,-1]
+n.test<-nrow(x.test)
+n.test
+y.hat.test<-predict(model_9_train,newdata=x.test)
+MSPR<-mean((log(y.test)-y.hat.test)^2)
+print(MSE)
+print(MSPR)
+#Influential Observations 
+#DFBetas
+dfbetas(model_9_weighted)[,12]
+plot(dfbetas(model_9_weighted)[,12],main="DFBETAS-'White'", ylab="",ylim=c(-.15,.15))
+abline(h=2/sqrt(24823),col="red")
+abline(h=-2/sqrt(24823),col="red")
+#DFBetas
+dfbetas(model_9_weighted)[,11]
+plot(dfbetas(model_9_weighted)[,11],main="DFBETAS-'Other Race'",ylab="",ylim=c(-.15,.15))
+abline(h=2/sqrt(24823),col="red")
+abline(h=-2/sqrt(24823),col="red")
